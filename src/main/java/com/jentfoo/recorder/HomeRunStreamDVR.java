@@ -27,6 +27,7 @@ public class HomeRunStreamDVR {
       service = parseAndMakeService(args);
     } catch (Exception e) {
       System.err.println(e.getMessage());
+      System.err.println();
       usageAndExit();
     }
     service.start();
@@ -126,6 +127,26 @@ public class HomeRunStreamDVR {
   private static void usageAndExit() {
     System.err.println("Usage: java " + HomeRunStreamDVR.class.getName() + 
                          " [HomeRunIP] [savePath] [maxInParallelStreams] [channel,hours:min,durationInMinutes(,00000000)]...");
+    System.err.println();
+    System.err.println("Arguments:");
+    System.err.println("  HomeRunIP - The IP address of the HD HomeRun");
+    System.err.println("  savePath - Path to directory to save mp4 files from HD HomeRun streams");
+    System.err.println("  maxInParallelStreams - Maximum number of streams that can be recorded in parallel...");
+    System.err.println("  channel,hours:min,durationInMinutes(,00000000) - Defines a channel and a schedule");
+    System.err.println("    channel - Numeric channel to be recorded");
+    System.err.println("    hours:min - The time (in a 24 hour clock format) which the recording should start");
+    System.err.println("    durationInMinutes - How many minutes the stream should be recorded for");
+    System.err.println("    00000000 - Optional argument to specify which week days the schedule is valid for");
+    System.err.println("      If the argument is not included, the schedule will run every day.");
+    System.err.println("      If you want to control what day it runs on, you must specify a 0 or 1 for EACH day.");
+    System.err.println("      1 indicates that it should record on that day, 0 indicates it should NOT record.");
+    System.err.println("      The location for each 0/1 coorosponds to: Sun Mon Tues Wed Thurs Fri Sat.");
+    System.err.println("      For example if you only want to record on the weekends you would supply: 1000001.");
+    System.err.println("      Alternatively if you wanted to record only on Thursday it would be: 0000100.");
+    System.err.println("    A complete schedule definition example which would record, ");
+    System.err.println("    Channel 10 every week day at 4 to 5pm AND channel 20 every day at 10 to 10:30am:");
+    System.err.println("    10,16:00,60,0111110 20,10:00,30");
+    
     System.exit(1);
   }
   
