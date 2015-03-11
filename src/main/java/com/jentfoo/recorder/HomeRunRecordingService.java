@@ -49,13 +49,20 @@ public class HomeRunRecordingService extends AbstractService {
                              " in " + daysTillRecord + " days");
       }
       
-      long period;
       if (recorder.chanSchedule.days.size() == 1) {
-        period = TimeUnit.DAYS.toMillis(7);
+        long timeDelay = recorder.getDelayInMillisTillStart();
+        long dayPointInMillis = TimeUnit.HOURS.toMillis(recorder.chanSchedule.hour) + 
+                                  TimeUnit.MINUTES.toMillis(recorder.chanSchedule.minute);
+        long initialDelay;
+        if (timeDelay > dayPointInMillis) {
+          initialDelay = TimeUnit.DAYS.toMillis(daysTillRecord) + timeDelay;
+        } else {
+          initialDelay = TimeUnit.DAYS.toMillis(daysTillRecord - 1) + timeDelay;
+        }
+        recordScheduler.scheduleAtFixedRate(recorder, initialDelay, TimeUnit.DAYS.toMillis(7));
       } else {
-        period = TimeUnit.DAYS.toMillis(1);
+        recordScheduler.scheduleAtFixedRate(recorder, recorder.getDelayInMillisTillStart(), TimeUnit.DAYS.toMillis(1));
       }
-      recordScheduler.scheduleAtFixedRate(recorder, recorder.getDelayInMillisTillStart(), period);
     }
   }
   
