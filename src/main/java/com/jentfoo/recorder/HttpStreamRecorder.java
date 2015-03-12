@@ -95,18 +95,29 @@ public class HttpStreamRecorder implements Runnable {
       OutputStream fileOut = null;
       try {
         fileOut = new BufferedOutputStream(new FileOutputStream(downloadFile));
+        boolean firstWrite = true;
         byte[] buffer = new byte[BUFFER_SIZE];
         int readCount;
-        while ((readCount = requestStream.read(buffer)) > -1) {
-          fileOut.write(buffer, 0, readCount);
+        try {
+          while ((readCount = requestStream.read(buffer)) > -1) {
+            fileOut.write(buffer, 0, readCount);
+            firstWrite = false;
+          }
+        } catch (SocketException e) {
+          // expected if disconnected while in read
+        } catch (IOException e) {
+          if (firstWrite) {
+            // we should not throw on our first read/write, so we will throw this as a true error
+            throw e;
+          } else {
+            // this is expected/possible if we start the read after the stream has been closed
+          }
         }
       } finally {
         if (fileOut != null) {
           fileOut.close();
         }
       }
-    } catch (SocketException e) {
-      // expected once disconnected
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
