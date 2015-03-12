@@ -13,7 +13,9 @@ import org.threadly.concurrent.AbstractService;
 import org.threadly.concurrent.SchedulerServiceInterface;
 
 public class HomeRunRecordingService extends AbstractService {
-  private final SchedulerServiceInterface recordScheduler;
+  public final SchedulerServiceInterface recordScheduler;
+  public final File savePath;
+  private final InetAddress downloadIp;
   private final List<HttpStreamRecorder> recorders; 
   
   public HomeRunRecordingService(SchedulerServiceInterface masterScheduler, 
@@ -21,18 +23,24 @@ public class HomeRunRecordingService extends AbstractService {
                                  InetAddress downloadIp, File savePath, 
                                  List<ChannelSchedule> schedule) {
     this.recordScheduler = recordScheduler;
+    this.savePath = savePath;
+    this.downloadIp = downloadIp;
     this.recorders = new ArrayList<HttpStreamRecorder>(schedule.size());
     Iterator<ChannelSchedule> it = schedule.iterator();
     while (it.hasNext()) {
       ChannelSchedule cs = it.next();
       URL requestURL; 
       try {
-        requestURL =  new URL("http://" + downloadIp.getHostAddress() + ":5004/auto/v" + cs.channel + "?dlna");
+        requestURL = makeRequestURL(cs.channel);
       } catch (MalformedURLException e) {
         throw new RuntimeException(e);
       }
       recorders.add(new HttpStreamRecorder(masterScheduler, requestURL, savePath, cs));
     }
+  }
+  
+  public URL makeRequestURL(short channel) throws MalformedURLException {
+    return new URL("http://" + downloadIp.getHostAddress() + ":5004/auto/v" + channel + "?dlna");
   }
 
   @Override
@@ -78,18 +86,6 @@ public class HomeRunRecordingService extends AbstractService {
     Iterator<HttpStreamRecorder> it = recorders.iterator();
     while (it.hasNext()) {
       recordScheduler.remove(it.next());
-    }
-    
-    synchronized (this) {
-      this.notifyAll();
-    }
-  }
-  
-  public void blockTillShutdown() throws InterruptedException {
-    synchronized (this) {
-      while (isRunning()) {
-        this.wait();
-      }
     }
   }
 }

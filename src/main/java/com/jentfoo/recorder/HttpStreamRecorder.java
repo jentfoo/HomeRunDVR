@@ -57,7 +57,7 @@ public class HttpStreamRecorder implements Runnable {
     return result;
   }
   
-  public HttpRequest makeRequest() {
+  protected HttpRequest makeRequest() {
     final HttpRequest request = HttpRequest.get(requestURL);
     request.readTimeout(READ_TIMEOUT);
     request.connectTimeout(CONNECT_TIMEOUT);

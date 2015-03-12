@@ -1,6 +1,9 @@
 package com.jentfoo.recorder;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -8,16 +11,24 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.threadly.concurrent.PriorityScheduler;
+import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
 import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
 
 public class HomeRunStreamDVR {
   private static final PriorityScheduler scheduler = new PriorityScheduler(8, 16, 1000 * 60);
+  private static final int hourShift;
   
-  public static void main(String[] args) throws InterruptedException {
+  static {
+    Calendar calendar = Calendar.getInstance();
+    hourShift = (calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET)) / 1000 / 60 / 60;
+  }
+  
+  public static void main(String[] args) throws InterruptedException, IOException {
     ExceptionHandler eh = new ExceptionHandler();
     Thread.setDefaultUncaughtExceptionHandler(eh);
     ExceptionUtils.setDefaultExceptionHandler(eh);
@@ -32,8 +43,59 @@ public class HomeRunStreamDVR {
     }
     service.start();
     
-    service.blockTillShutdown();
-    scheduler.shutdown();
+    try {
+      BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+      String line;
+      System.out.println("\nReady to accept commands for on demand recording...");
+      System.out.println("To start a recording type in the format: channel,durationInMinutes");
+      System.out.println("You can also specify an absolute end time in this format: channel,hour:minute");
+      while ((line = reader.readLine()) != null) {
+        if (line.equalsIgnoreCase("exit")) {
+          System.out.println("Exiting...");
+          return;
+        }
+        int chanDelimIndex = line.indexOf(',');
+        if (chanDelimIndex < 0) {
+          System.err.println("Could not parse request: '" + line + "'");
+          continue;
+        }
+        
+        try {
+          short channel = Short.parseShort(line.substring(0, chanDelimIndex));
+          short duration;
+          int timeDelimIndex = line.indexOf(':', chanDelimIndex);
+          if (timeDelimIndex < 0) {
+            duration = Short.parseShort(line.substring(chanDelimIndex + 1));
+          } else {
+            short hour = Short.parseShort(line.substring(chanDelimIndex + 1, timeDelimIndex));
+            short min = Short.parseShort(line.substring(timeDelimIndex + 1));
+            duration = (short)TimeUnit.MILLISECONDS.toMinutes(SchedulingUtils.getDelayTillHour(shiftHour(hour), min));
+          }
+          
+          Calendar cal = Calendar.getInstance();
+          ChannelSchedule schedule = new ChannelSchedule(channel, shiftHour((short)cal.get(Calendar.HOUR_OF_DAY)), (short)cal.get(Calendar.MINUTE), duration, 
+                                                         ChannelSchedule.ALL_DAYS);
+          
+          service.recordScheduler.execute(new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
+                                                                 service.savePath, schedule));
+        } catch (NumberFormatException e) {
+          System.err.println("Could not channel or duration from line: '" + line + "'");
+          System.err.println("Format is: channel,durationInMinutes");
+        }
+      }
+    } finally {
+      scheduler.shutdown();
+    }
+  }
+  
+  private static short shiftHour(short hour) {
+    hour -= hourShift;
+    if (hour > 23) {
+      hour %= 24;
+    } else if (hour < 0) {
+      hour += 24;
+    }
+    return hour;
   }
   
   private static HomeRunRecordingService parseAndMakeService(String[] args) throws UnknownHostException {
@@ -94,8 +156,6 @@ public class HomeRunStreamDVR {
         }
       }
 
-      Calendar calendar = Calendar.getInstance();
-      int hourShift = (calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET)) / 1000 / 60 / 60;
       try {
         short channel = Short.parseShort(args[i].substring(0, chanDelimIndex));
         short hour = Short.parseShort(args[i].substring(chanDelimIndex + 1, timeDelimIndex));
@@ -107,12 +167,7 @@ public class HomeRunStreamDVR {
           duration = Short.parseShort(args[i].substring(durationDelimIndex + 1, dayDelimIndex));
         }
         
-        hour -= hourShift;
-        if (hour > 23) {
-          hour %= 24;
-        } else if (hour < 0) {
-          hour += 24;
-        }
+        hour = shiftHour(hour);
         
         schedule.add(new ChannelSchedule(channel, hour, minute, duration, recordDays));
       } catch (NumberFormatException e) {
@@ -121,7 +176,7 @@ public class HomeRunStreamDVR {
     }
     
     return new HomeRunRecordingService(scheduler, new SchedulerServiceLimiter(scheduler, maxInParallel), 
-                                downloadIp, savePath, schedule);
+                                       downloadIp, savePath, schedule);
   }
   
   private static void usageAndExit() {
