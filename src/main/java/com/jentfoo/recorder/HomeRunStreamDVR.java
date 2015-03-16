@@ -77,20 +77,22 @@ public class HomeRunStreamDVR {
           short channel;
           long recordHour;
           long recordMin;
+          short duration;
           if (delayDelimIndex > 0) {
-            initialDelayMillis = parseTime(line, 0, delayDelimIndex);
+            initialDelayMillis = parseTimeInMillis(line, 0, delayDelimIndex);
             channel = Short.parseShort(line.substring(delayDelimIndex + 1, chanDelimIndex));
 
             recordHour = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 / 60) % 24;
             recordMin = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 ) % 60;
+            long durationMillis = parseTimeInMillis(line, chanDelimIndex + 1, line.length()) - initialDelayMillis;
+            duration = (short)TimeUnit.MILLISECONDS.toMinutes(durationMillis);
           } else {
             channel = Short.parseShort(line.substring(0, chanDelimIndex));
 
             recordHour = (Clock.lastKnownTimeMillis() / 1000 / 60 / 60) % 24;
             recordMin = (Clock.lastKnownTimeMillis() / 1000 / 60 ) % 60;
+            duration = (short)TimeUnit.MILLISECONDS.toMinutes(parseTimeInMillis(line, chanDelimIndex + 1, line.length()));
           }
-
-          short duration = parseTime(line, chanDelimIndex, line.length());
           
           ChannelSchedule schedule = new ChannelSchedule(channel, (short)recordHour, (short)recordMin, 
                                                          duration, ChannelSchedule.ALL_DAYS);;
@@ -115,15 +117,15 @@ public class HomeRunStreamDVR {
     }
   }
   
-  private static short parseTime(String str, int startIndex, int endIndex) {
-    short result;
+  private static long parseTimeInMillis(String str, int startIndex, int endIndex) {
+    long result;
     int timeDelimIndex = str.indexOf(':', startIndex);
     if (timeDelimIndex < 0 || timeDelimIndex >= endIndex) {
-      result = Short.parseShort(str.substring(startIndex + 1, endIndex));
+      result = TimeUnit.MINUTES.toMillis(Integer.parseInt(str.substring(startIndex, endIndex)));
     } else {
-      short hour = Short.parseShort(str.substring(startIndex + 1, timeDelimIndex));
+      short hour = Short.parseShort(str.substring(startIndex, timeDelimIndex));
       short min = Short.parseShort(str.substring(timeDelimIndex + 1, endIndex));
-      result = (short)TimeUnit.MILLISECONDS.toMinutes(SchedulingUtils.getDelayTillHour(shiftHour(hour), min));
+      result = SchedulingUtils.getDelayTillHour(shiftHour(hour), min);
     }
     
     return result;
