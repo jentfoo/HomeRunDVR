@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
+import org.threadly.util.Clock;
 import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
 
@@ -74,32 +75,25 @@ public class HomeRunStreamDVR {
         try {
           long initialDelayMillis = 0;
           short channel;
+          long recordHour;
+          long recordMin;
           if (delayDelimIndex > 0) {
-            int timeDelimIndex = line.indexOf(':');
-            if (timeDelimIndex < 0 || timeDelimIndex > delayDelimIndex) {
-              initialDelayMillis = TimeUnit.MINUTES.toMillis(Short.parseShort(line.substring(0, delayDelimIndex)));
-            } else {
-              short hour = Short.parseShort(line.substring(0, timeDelimIndex));
-              short min = Short.parseShort(line.substring(timeDelimIndex + 1, delayDelimIndex));
-              initialDelayMillis = SchedulingUtils.getDelayTillHour(shiftHour(hour), min);
-            }
+            initialDelayMillis = parseTime(line, 0, delayDelimIndex);
             channel = Short.parseShort(line.substring(delayDelimIndex + 1, chanDelimIndex));
+
+            recordHour = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 / 60) % 24;
+            recordMin = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 ) % 60;
           } else {
             channel = Short.parseShort(line.substring(0, chanDelimIndex));
+
+            recordHour = (Clock.lastKnownTimeMillis() / 1000 / 60 / 60) % 24;
+            recordMin = (Clock.lastKnownTimeMillis() / 1000 / 60 ) % 60;
           }
-          short duration;
-          int timeDelimIndex = line.indexOf(':', chanDelimIndex);
-          if (timeDelimIndex < 0) {
-            duration = Short.parseShort(line.substring(chanDelimIndex + 1));
-          } else {
-            short hour = Short.parseShort(line.substring(chanDelimIndex + 1, timeDelimIndex));
-            short min = Short.parseShort(line.substring(timeDelimIndex + 1));
-            duration = (short)TimeUnit.MILLISECONDS.toMinutes(SchedulingUtils.getDelayTillHour(shiftHour(hour), min));
-          }
+
+          short duration = parseTime(line, chanDelimIndex, line.length());
           
-          Calendar cal = Calendar.getInstance();
-          ChannelSchedule schedule = new ChannelSchedule(channel, shiftHour((short)cal.get(Calendar.HOUR_OF_DAY)), (short)cal.get(Calendar.MINUTE), duration, 
-                                                         ChannelSchedule.ALL_DAYS);
+          ChannelSchedule schedule = new ChannelSchedule(channel, (short)recordHour, (short)recordMin, 
+                                                         duration, ChannelSchedule.ALL_DAYS);;
           
           HttpStreamRecorder streamRecorder = new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
                                                                      service.savePath, schedule);
@@ -119,6 +113,20 @@ public class HomeRunStreamDVR {
     } finally {
       scheduler.shutdown();
     }
+  }
+  
+  private static short parseTime(String str, int startIndex, int endIndex) {
+    short result;
+    int timeDelimIndex = str.indexOf(':', startIndex);
+    if (timeDelimIndex < 0 || timeDelimIndex >= endIndex) {
+      result = Short.parseShort(str.substring(startIndex + 1, endIndex));
+    } else {
+      short hour = Short.parseShort(str.substring(startIndex + 1, timeDelimIndex));
+      short min = Short.parseShort(str.substring(timeDelimIndex + 1, endIndex));
+      result = (short)TimeUnit.MILLISECONDS.toMinutes(SchedulingUtils.getDelayTillHour(shiftHour(hour), min));
+    }
+    
+    return result;
   }
   
   private static short shiftHour(short hour) {
