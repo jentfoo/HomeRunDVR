@@ -49,19 +49,44 @@ public class HomeRunStreamDVR {
       System.out.println("\nReady to accept commands for on demand recording...");
       System.out.println("To start a recording type in the format: channel,durationInMinutes");
       System.out.println("You can also specify an absolute end time in this format: channel,hour:minute");
+      System.out.println("You can optionaly specify a delay before it starts at the front.");
+      System.out.println("For example you can do: delayInMInutes,chan,duration|endTime");
+      System.out.println("You can also specify an absolute start time: hour:minute,chan,duration|endTime");
+      System.out.println();
       while ((line = reader.readLine()) != null) {
         if (line.equalsIgnoreCase("exit")) {
           System.out.println("Exiting...");
           return;
         }
-        int chanDelimIndex = line.indexOf(',');
-        if (chanDelimIndex < 0) {
+        
+        int firstCommaIndex = line.indexOf(',');
+        if (firstCommaIndex < 0) {
           System.err.println("Could not parse request: '" + line + "'");
           continue;
         }
+        int delayDelimIndex = firstCommaIndex;
+        int chanDelimIndex = line.indexOf(',', firstCommaIndex + 1);
+        if (chanDelimIndex < 0) {
+          chanDelimIndex = delayDelimIndex;
+          delayDelimIndex = -1;
+        }
         
         try {
-          short channel = Short.parseShort(line.substring(0, chanDelimIndex));
+          long initialDelayMillis = 0;
+          short channel;
+          if (delayDelimIndex > 0) {
+            int timeDelimIndex = line.indexOf(':');
+            if (timeDelimIndex < 0 || timeDelimIndex > delayDelimIndex) {
+              initialDelayMillis = TimeUnit.MINUTES.toMillis(Short.parseShort(line.substring(0, delayDelimIndex)));
+            } else {
+              short hour = Short.parseShort(line.substring(0, timeDelimIndex));
+              short min = Short.parseShort(line.substring(timeDelimIndex + 1, delayDelimIndex));
+              initialDelayMillis = SchedulingUtils.getDelayTillHour(shiftHour(hour), min);
+            }
+            channel = Short.parseShort(line.substring(delayDelimIndex + 1, chanDelimIndex));
+          } else {
+            channel = Short.parseShort(line.substring(0, chanDelimIndex));
+          }
           short duration;
           int timeDelimIndex = line.indexOf(':', chanDelimIndex);
           if (timeDelimIndex < 0) {
@@ -76,10 +101,18 @@ public class HomeRunStreamDVR {
           ChannelSchedule schedule = new ChannelSchedule(channel, shiftHour((short)cal.get(Calendar.HOUR_OF_DAY)), (short)cal.get(Calendar.MINUTE), duration, 
                                                          ChannelSchedule.ALL_DAYS);
           
-          service.recordScheduler.execute(new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
-                                                                 service.savePath, schedule));
+          HttpStreamRecorder streamRecorder = new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
+                                                                     service.savePath, schedule);
+          if (initialDelayMillis > 0) {
+            System.out.println("Will start recording channel: " + channel + 
+                                 " in " + TimeUnit.MILLISECONDS.toMinutes(initialDelayMillis) + " minutes");
+            service.recordScheduler.schedule(streamRecorder, initialDelayMillis);
+          } else {
+            service.recordScheduler.execute(streamRecorder);
+          }
         } catch (NumberFormatException e) {
-          System.err.println("Could not channel or duration from line: '" + line + "'");
+          e.printStackTrace();
+          System.err.println("Could not parse channel or duration from line: '" + line + "'");
           System.err.println("Format is: channel,durationInMinutes");
         }
       }
