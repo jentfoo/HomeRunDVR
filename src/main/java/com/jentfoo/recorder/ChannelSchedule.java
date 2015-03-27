@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.util.Clock;
 
 public class ChannelSchedule {
@@ -41,7 +42,7 @@ public class ChannelSchedule {
     long currMin = (Clock.lastKnownTimeMillis() / 1000 / 60 ) % 60;
     
     long currDayMin = (currHour * 60) + currMin;
-    int expectedDayMin = (hour * 60) + minute;
+    int expectedDayMin = (SchedulingUtils.shiftLocalHourToUTC(hour) * 60) + minute;
     
     return currDayMin - expectedDayMin <= VALID_ALLOWED_VARIATION_IN_MINUTES;
   }

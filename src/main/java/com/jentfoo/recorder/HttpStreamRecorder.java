@@ -34,7 +34,7 @@ public class HttpStreamRecorder implements Runnable {
   }
   
   public long getDelayInMillisTillStart() {
-    return SchedulingUtils.getDelayTillHour(chanSchedule.hour, chanSchedule.minute);
+    return SchedulingUtils.getDelayTillHour(SchedulingUtils.shiftLocalHourToUTC(chanSchedule.hour), chanSchedule.minute);
   }
   
   private File getDownloadFile() {

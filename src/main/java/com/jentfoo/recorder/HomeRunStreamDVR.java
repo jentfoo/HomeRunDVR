@@ -8,7 +8,6 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -21,13 +20,7 @@ import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
 
 public class HomeRunStreamDVR {
-  private static final PriorityScheduler scheduler = new PriorityScheduler(8, 16, 1000 * 60);
-  private static final int hourShift;
-  
-  static {
-    Calendar calendar = Calendar.getInstance();
-    hourShift = (calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET)) / 1000 / 60 / 60;
-  }
+  private static final PriorityScheduler scheduler = new PriorityScheduler(16);
   
   public static void main(String[] args) throws InterruptedException, IOException {
     ExceptionHandler eh = new ExceptionHandler();
@@ -125,20 +118,10 @@ public class HomeRunStreamDVR {
     } else {
       short hour = Short.parseShort(str.substring(startIndex, timeDelimIndex));
       short min = Short.parseShort(str.substring(timeDelimIndex + 1, endIndex));
-      result = SchedulingUtils.getDelayTillHour(shiftHour(hour), min);
+      result = SchedulingUtils.getDelayTillHour(SchedulingUtils.shiftLocalHourToUTC(hour), min);
     }
     
     return result;
-  }
-  
-  private static short shiftHour(short hour) {
-    hour -= hourShift;
-    if (hour > 23) {
-      hour %= 24;
-    } else if (hour < 0) {
-      hour += 24;
-    }
-    return hour;
   }
   
   private static HomeRunRecordingService parseAndMakeService(String[] args) throws UnknownHostException {
@@ -209,8 +192,6 @@ public class HomeRunStreamDVR {
         } else {
           duration = Short.parseShort(args[i].substring(durationDelimIndex + 1, dayDelimIndex));
         }
-        
-        hour = shiftHour(hour);
         
         schedule.add(new ChannelSchedule(channel, hour, minute, duration, recordDays));
       } catch (NumberFormatException e) {
