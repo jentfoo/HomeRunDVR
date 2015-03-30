@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
-import org.threadly.util.Clock;
 import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
 
@@ -68,27 +67,21 @@ public class HomeRunStreamDVR {
         try {
           long initialDelayMillis = 0;
           short channel;
-          long recordHour;
-          long recordMin;
           short duration;
           if (delayDelimIndex > 0) {
             initialDelayMillis = parseTimeInMillis(line, 0, delayDelimIndex);
             channel = Short.parseShort(line.substring(delayDelimIndex + 1, chanDelimIndex));
 
-            recordHour = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 / 60) % 24;
-            recordMin = ((Clock.lastKnownTimeMillis() + initialDelayMillis) / 1000 / 60 ) % 60;
             long durationMillis = parseTimeInMillis(line, chanDelimIndex + 1, line.length()) - initialDelayMillis;
             duration = (short)TimeUnit.MILLISECONDS.toMinutes(durationMillis);
           } else {
             channel = Short.parseShort(line.substring(0, chanDelimIndex));
 
-            recordHour = (Clock.lastKnownTimeMillis() / 1000 / 60 / 60) % 24;
-            recordMin = (Clock.lastKnownTimeMillis() / 1000 / 60 ) % 60;
             duration = (short)TimeUnit.MILLISECONDS.toMinutes(parseTimeInMillis(line, chanDelimIndex + 1, line.length()));
           }
           
-          ChannelSchedule schedule = new ChannelSchedule(channel, (short)recordHour, (short)recordMin, 
-                                                         duration, ChannelSchedule.ALL_DAYS);;
+          ChannelSchedule schedule = new ChannelSchedule(channel, (short)TimeUtils.getCurrHour(), (short)TimeUtils.getCurrMin(), 
+                                                         duration, ChannelSchedule.ALL_DAYS, true);
           
           HttpStreamRecorder streamRecorder = new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
                                                                      service.savePath, schedule);
@@ -193,7 +186,7 @@ public class HomeRunStreamDVR {
           duration = Short.parseShort(args[i].substring(durationDelimIndex + 1, dayDelimIndex));
         }
         
-        schedule.add(new ChannelSchedule(channel, hour, minute, duration, recordDays));
+        schedule.add(new ChannelSchedule(channel, hour, minute, duration, recordDays, false));
       } catch (NumberFormatException e) {
         throw new IllegalArgumentException("Illegal character in parsing channel, time, or duration", e);
       }

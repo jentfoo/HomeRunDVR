@@ -48,37 +48,29 @@ public class HomeRunRecordingService extends AbstractService {
     Iterator<HttpStreamRecorder> it = recorders.iterator();
     while (it.hasNext()) {
       HttpStreamRecorder recorder = it.next();
-      short daysTillRecord = recorder.chanSchedule.daysTillValid();
-      if (daysTillRecord == 0) {
-        System.out.println("Will start recording channel: " + recorder.chanSchedule.channel + 
-                             " in " + makeTimeStr(recorder.getDelayInMillisTillStart()) + " minutes");
-      } else {
-        System.out.println("Scheduling to start recording channel: " + recorder.chanSchedule.channel + 
-                             " in " + daysTillRecord + " days");
-      }
+      long initalDelayMillis = recorder.chanSchedule.getDelayTillStartMillis();
+      System.out.println("Scheduling to start recording channel: " + recorder.chanSchedule.channel + 
+                           " in " + makeTimeStr(initalDelayMillis));
       
       if (recorder.chanSchedule.days.size() == 1) {
-        long timeDelay = recorder.getDelayInMillisTillStart();
-        long dayPointInMillis = TimeUnit.HOURS.toMillis(recorder.chanSchedule.hour) + 
-                                  TimeUnit.MINUTES.toMillis(recorder.chanSchedule.minute);
-        long initialDelay;
-        if (timeDelay > dayPointInMillis) {
-          initialDelay = TimeUnit.DAYS.toMillis(daysTillRecord) + timeDelay;
-        } else {
-          initialDelay = TimeUnit.DAYS.toMillis(daysTillRecord - 1) + timeDelay;
-        }
-        recordScheduler.scheduleAtFixedRate(recorder, initialDelay, TimeUnit.DAYS.toMillis(7));
+        recordScheduler.scheduleAtFixedRate(recorder, initalDelayMillis, TimeUnit.DAYS.toMillis(7));
       } else {
-        recordScheduler.scheduleAtFixedRate(recorder, recorder.getDelayInMillisTillStart(), TimeUnit.DAYS.toMillis(1));
+        recordScheduler.scheduleAtFixedRate(recorder, initalDelayMillis, TimeUnit.DAYS.toMillis(1));
       }
     }
   }
   
   private static String makeTimeStr(long millis) {
-    int min = (int)((millis / 1000) / 60);
-    int seconds = (int)((millis - (min * 1000 * 60)) / 1000);
-    
-    return min + ":" + StringFormatter.pad(seconds, 2);
+    if (millis < TimeUnit.DAYS.toMillis(1)) {
+      int min = (int)((millis / 1000) / 60);
+      int seconds = (int)((millis - (min * 1000 * 60)) / 1000);
+      
+      return min + ":" + StringFormatter.pad(seconds, 2) + " minutes";
+    } else {
+      long days = TimeUnit.MILLISECONDS.toDays(millis);
+      
+      return days + " days " + makeTimeStr(millis - TimeUnit.DAYS.toMillis(days));
+    }
   }
 
   @Override

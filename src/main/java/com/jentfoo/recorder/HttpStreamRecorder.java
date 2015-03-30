@@ -10,7 +10,6 @@ import java.net.SocketException;
 import java.net.URL;
 import java.util.Calendar;
 
-import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.SimpleSchedulerInterface;
 
 import com.github.kevinsawicki.http.HttpRequest;
@@ -19,22 +18,18 @@ public class HttpStreamRecorder implements Runnable {
   private static final int READ_TIMEOUT = 1000;
   private static final int CONNECT_TIMEOUT = 1000;
   private static final int BUFFER_SIZE = 4096;
-  
+
+  public final ChannelSchedule chanSchedule;
   private final SimpleSchedulerInterface scheduler;
   private final URL requestURL;
   private final File savePath;
-  public final ChannelSchedule chanSchedule;
   
   public HttpStreamRecorder(SimpleSchedulerInterface scheduler, 
                             URL requestURL, File savePath, ChannelSchedule schedule) {
+    this.chanSchedule = schedule;
     this.scheduler = scheduler;
     this.requestURL = requestURL;
     this.savePath = savePath;
-    this.chanSchedule = schedule;
-  }
-  
-  public long getDelayInMillisTillStart() {
-    return SchedulingUtils.getDelayTillHour(SchedulingUtils.shiftLocalHourToUTC(chanSchedule.hour), chanSchedule.minute);
   }
   
   private File getDownloadFile() {
@@ -76,8 +71,9 @@ public class HttpStreamRecorder implements Runnable {
   @Override
   public void run() {
     if (! chanSchedule.timeValid()) {
-      System.err.println("Time for channel: " + chanSchedule.channel + 
-                           " is not close enough to start recording, this could indicate too many overlapping schedules");
+      System.err.println("Time for channel: " + chanSchedule.channel + " ( " + chanSchedule.hour + ":" + chanSchedule.minute + " ) " + 
+                           "is not close enough to actual time ( " + TimeUtils.getCurrHour() + ":" + TimeUtils.getCurrMin() + " ) to start recording." + 
+                           "  this could indicate too many overlapping schedules");
       
       return;
     } else if (! chanSchedule.dayValid()) {
