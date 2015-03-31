@@ -69,21 +69,21 @@ public class ChannelSchedule {
    * 
    * @return how many days till the schedule should run
    */
-  public short daysTillValid() {
+  public int daysTillValid() {
     short currDay = getCurrentDayNum();
     for (short i = 0; i < 7; i++) {
       short d = (short)((currDay + i) % 7);
       if (days.contains(d)) {
-        if (i == 1) {
+        if (i == 0) {
+          return 0;
+        } else {
           long currHour = TimeUtils.getCurrHour();
           if (currHour > hour || (currHour == hour && TimeUtils.getCurrMin() > minute)) {
             // we have passed the time, so it will be less than 1 day
-            return 0;
+            return i - 1;
           } else {
             return i;
           }
-        } else {
-          return i;
         }
       }
     }
