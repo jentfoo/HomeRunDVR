@@ -57,6 +57,7 @@ public class HomeRunStreamDVR {
           System.err.println("Could not parse request: '" + line + "'");
           continue;
         }
+        
         int delayDelimIndex = firstCommaIndex;
         int chanDelimIndex = line.indexOf(',', firstCommaIndex + 1);
         if (chanDelimIndex < 0) {
@@ -92,10 +93,9 @@ public class HomeRunStreamDVR {
           } else {
             service.recordScheduler.execute(streamRecorder);
           }
-        } catch (NumberFormatException e) {
-          e.printStackTrace();
-          System.err.println("Could not parse channel or duration from line: '" + line + "'");
-          System.err.println("Format is: channel,durationInMinutes");
+        } catch (Exception e) {
+          System.err.println("Could not parse line: '" + line + "'");
+          System.err.println("Error: " + e.getMessage());
         }
       }
     } finally {
