@@ -15,10 +15,11 @@ import java.util.concurrent.TimeUnit;
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
+import org.threadly.util.Clock;
 import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
 
-public class HomeRunStreamDVR {
+public class HomeRunDVR {
   private static final PriorityScheduler scheduler = new PriorityScheduler(16);
   
   public static void main(String[] args) throws InterruptedException, IOException {
@@ -69,19 +70,29 @@ public class HomeRunStreamDVR {
           long initialDelayMillis = 0;
           short channel;
           short duration;
+          short hour;
+          short minute;
           if (delayDelimIndex > 0) {
-            initialDelayMillis = parseTimeInMillis(line, 0, delayDelimIndex);
+            initialDelayMillis = parseTimeInMillis(line, 0, delayDelimIndex).millis;
             channel = Short.parseShort(line.substring(delayDelimIndex + 1, chanDelimIndex));
 
-            long durationMillis = parseTimeInMillis(line, chanDelimIndex + 1, line.length()) - initialDelayMillis;
+            TimeParseResult durationParse = parseTimeInMillis(line, chanDelimIndex + 1, line.length());
+            long durationMillis = durationParse.millis;
+            if (durationParse.absolute) {
+              durationMillis -= initialDelayMillis;
+            }
             duration = (short)TimeUnit.MILLISECONDS.toMinutes(durationMillis);
+            hour = (short)TimeUtils.getHour(Clock.lastKnownTimeMillis() + initialDelayMillis);
+            minute = (short)TimeUtils.getMin(Clock.lastKnownTimeMillis() + initialDelayMillis);
           } else {
             channel = Short.parseShort(line.substring(0, chanDelimIndex));
 
-            duration = (short)TimeUnit.MILLISECONDS.toMinutes(parseTimeInMillis(line, chanDelimIndex + 1, line.length()));
+            duration = (short)TimeUnit.MILLISECONDS.toMinutes(parseTimeInMillis(line, chanDelimIndex + 1, line.length()).millis);
+            hour = (short)TimeUtils.getCurrHour();
+            minute = (short)TimeUtils.getCurrMin();
           }
           
-          ChannelSchedule schedule = new ChannelSchedule(channel, (short)TimeUtils.getCurrHour(), (short)TimeUtils.getCurrMin(), 
+          ChannelSchedule schedule = new ChannelSchedule(channel, hour, minute, 
                                                          duration, ChannelSchedule.ALL_DAYS, true);
           
           HttpStreamRecorder streamRecorder = new HttpStreamRecorder(scheduler, service.makeRequestURL(schedule.channel), 
@@ -103,18 +114,25 @@ public class HomeRunStreamDVR {
     }
   }
   
-  private static long parseTimeInMillis(String str, int startIndex, int endIndex) {
-    long result;
+  private static TimeParseResult parseTimeInMillis(String str, int startIndex, int endIndex) {
     int timeDelimIndex = str.indexOf(':', startIndex);
     if (timeDelimIndex < 0 || timeDelimIndex >= endIndex) {
-      result = TimeUnit.MINUTES.toMillis(Integer.parseInt(str.substring(startIndex, endIndex)));
+      return new TimeParseResult(false, TimeUnit.MINUTES.toMillis(Integer.parseInt(str.substring(startIndex, endIndex))));
     } else {
       short hour = Short.parseShort(str.substring(startIndex, timeDelimIndex));
       short min = Short.parseShort(str.substring(timeDelimIndex + 1, endIndex));
-      result = SchedulingUtils.getDelayTillHour(SchedulingUtils.shiftLocalHourToUTC(hour), min);
+      return new TimeParseResult(true, SchedulingUtils.getDelayTillHour(SchedulingUtils.shiftLocalHourToUTC(hour), min));
     }
+  }
+  
+  private static class TimeParseResult {
+    public final boolean absolute;
+    public final long millis;
     
-    return result;
+    public TimeParseResult(boolean absolute, long millis) {
+      this.absolute = absolute;
+      this.millis = millis;
+    }
   }
   
   private static HomeRunRecordingService parseAndMakeService(String[] args) throws UnknownHostException {
@@ -197,7 +215,7 @@ public class HomeRunStreamDVR {
   }
   
   private static void usageAndExit() {
-    System.err.println("Usage: java " + HomeRunStreamDVR.class.getName() + 
+    System.err.println("Usage: java " + HomeRunDVR.class.getName() + 
                          " [HomeRunIP] [savePath] [maxInParallelStreams] [channel,hours:min,durationInMinutes(,00000000)]...");
     System.err.println();
     System.err.println("Arguments:");
