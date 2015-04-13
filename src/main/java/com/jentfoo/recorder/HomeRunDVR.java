@@ -8,6 +8,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -21,6 +22,18 @@ import org.threadly.util.ExceptionUtils;
 
 public class HomeRunDVR {
   private static final PriorityScheduler scheduler = new PriorityScheduler(16);
+  private static final Runnable timeLogger = new Runnable() {
+    @Override
+    public void run() {
+      Calendar cal = Calendar.getInstance();
+      
+      String day = StringFormatter.pad(cal.get(Calendar.DAY_OF_MONTH), 2);
+      String hour = StringFormatter.pad(cal.get(Calendar.HOUR_OF_DAY), 2);
+      String min = StringFormatter.pad(cal.get(Calendar.MINUTE), 2);
+      
+      System.out.println(day + " - " + hour + ":" + min);
+    }
+  };
   
   public static void main(String[] args) throws InterruptedException, IOException {
     ExceptionHandler eh = new ExceptionHandler();
@@ -51,6 +64,15 @@ public class HomeRunDVR {
         if (line.equalsIgnoreCase("exit")) {
           System.out.println("Exiting...");
           return;
+        } else if (line.equalsIgnoreCase("time") || line.equalsIgnoreCase("logTime")) {
+          if (scheduler.remove(timeLogger)) {
+            System.out.println("Stopping logging time");
+          } else {
+            System.out.print("Starting logging time: ");
+            timeLogger.run();
+            scheduler.scheduleAtFixedRate(timeLogger, SchedulingUtils.getDelayTillMinute(0), TimeUnit.HOURS.toMillis(1));
+          }
+          continue;
         }
         
         int firstCommaIndex = line.indexOf(',');
