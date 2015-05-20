@@ -59,9 +59,6 @@ public class ChannelSchedule {
   public boolean dayValid() {
     short currDay = getCurrentDayNum();
     
-    // TODO - remove
-    System.out.println("Current day: " + currDay + " - " + days.contains(currDay));
-    
     return days.contains(currDay);
   }
   
