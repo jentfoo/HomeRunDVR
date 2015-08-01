@@ -19,6 +19,7 @@ import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
 import org.threadly.util.Clock;
 import org.threadly.util.ExceptionHandlerInterface;
 import org.threadly.util.ExceptionUtils;
+import org.threadly.util.StringUtils;
 
 public class HomeRunDVR {
   private static final PriorityScheduler scheduler = new PriorityScheduler(16);
@@ -27,9 +28,9 @@ public class HomeRunDVR {
     public void run() {
       Calendar cal = Calendar.getInstance();
       
-      String day = StringFormatter.pad(cal.get(Calendar.DAY_OF_MONTH), 2);
-      String hour = StringFormatter.pad(cal.get(Calendar.HOUR_OF_DAY), 2);
-      String min = StringFormatter.pad(cal.get(Calendar.MINUTE), 2);
+      String day = StringUtils.padStart(Integer.toString(cal.get(Calendar.DAY_OF_MONTH)), 2, '0');
+      String hour = StringUtils.padStart(Integer.toString(cal.get(Calendar.HOUR_OF_DAY)), 2, '0');
+      String min = StringUtils.padStart(Integer.toString(cal.get(Calendar.MINUTE)), 2, '0');
       
       System.out.println(day + " - " + hour + ":" + min);
     }

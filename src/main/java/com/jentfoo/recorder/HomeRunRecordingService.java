@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.threadly.concurrent.SchedulerServiceInterface;
 import org.threadly.util.AbstractService;
+import org.threadly.util.StringUtils;
 
 public class HomeRunRecordingService extends AbstractService {
   public final SchedulerServiceInterface recordScheduler;
@@ -65,7 +66,7 @@ public class HomeRunRecordingService extends AbstractService {
       int min = (int)((millis / 1000) / 60);
       int seconds = (int)((millis - (min * 1000 * 60)) / 1000);
       
-      return min + ":" + StringFormatter.pad(seconds, 2) + " minutes";
+      return min + ":" + StringUtils.padStart(Integer.toString(seconds), 2, '0') + " minutes";
     } else {
       long days = TimeUnit.MILLISECONDS.toDays(millis);
       

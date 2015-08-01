@@ -11,6 +11,7 @@ import java.net.URL;
 import java.util.Calendar;
 
 import org.threadly.concurrent.SimpleSchedulerInterface;
+import org.threadly.util.StringUtils;
 
 import com.github.kevinsawicki.http.HttpRequest;
 
@@ -35,8 +36,9 @@ public class HttpStreamRecorder implements Runnable {
   private File getDownloadFile() {
     Calendar cal = Calendar.getInstance();
     
-    String name = Short.toString(chanSchedule.channel) + "-" + 
-                    cal.get(Calendar.YEAR) + StringFormatter.pad(cal.get(Calendar.MONTH), 2) + StringFormatter.pad(cal.get(Calendar.DAY_OF_MONTH), 2) + "-" + 
+    String name = Short.toString(chanSchedule.channel) + "-" + cal.get(Calendar.YEAR) + 
+                    StringUtils.padStart(Integer.toString(cal.get(Calendar.MONTH)), 2, '0') + 
+                    StringUtils.padStart(Integer.toString(cal.get(Calendar.DAY_OF_MONTH)), 2, '0') + "-" + 
                     ((chanSchedule.hour * 60) + chanSchedule.minute) + ".mp4";
     
     File result = new File(savePath, name);
