@@ -39,7 +39,8 @@ public class HttpStreamRecorder implements Runnable {
     String name = Short.toString(chanSchedule.channel) + "-" + cal.get(Calendar.YEAR) + 
                     StringUtils.padStart(Integer.toString(cal.get(Calendar.MONTH)), 2, '0') + 
                     StringUtils.padStart(Integer.toString(cal.get(Calendar.DAY_OF_MONTH)), 2, '0') + "-" + 
-                    ((chanSchedule.hour * 60) + chanSchedule.minute) + ".mp4";
+                    StringUtils.padStart(Integer.toString(chanSchedule.hour), 2, '0') + 
+                    StringUtils.padStart(Integer.toString(chanSchedule.minute), 2, '0') + ".mp4";
     
     File result = new File(savePath, name);
     

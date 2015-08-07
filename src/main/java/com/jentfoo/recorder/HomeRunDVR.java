@@ -102,6 +102,9 @@ public class HomeRunDVR {
             TimeParseResult durationParse = parseTimeInMillis(line, chanDelimIndex + 1, line.length());
             long durationMillis = durationParse.millis;
             if (durationParse.absolute) {
+              if (durationMillis < initialDelayMillis) {
+                durationMillis += TimeUnit.DAYS.toMillis(1);
+              }
               durationMillis -= initialDelayMillis;
             }
             duration = (short)TimeUnit.MILLISECONDS.toMinutes(durationMillis);
