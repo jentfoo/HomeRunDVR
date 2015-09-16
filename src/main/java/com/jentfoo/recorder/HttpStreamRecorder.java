@@ -10,7 +10,7 @@ import java.net.SocketException;
 import java.net.URL;
 import java.util.Calendar;
 
-import org.threadly.concurrent.SimpleSchedulerInterface;
+import org.threadly.concurrent.SubmitterScheduler;
 import org.threadly.util.StringUtils;
 
 import com.github.kevinsawicki.http.HttpRequest;
@@ -19,13 +19,14 @@ public class HttpStreamRecorder implements Runnable {
   private static final int READ_TIMEOUT = 1000;
   private static final int CONNECT_TIMEOUT = 1000;
   private static final int BUFFER_SIZE = 4096;
+  private static final String USER_AGENT = "jentfoo/HomeRunDVR";
 
   public final ChannelSchedule chanSchedule;
-  private final SimpleSchedulerInterface scheduler;
+  private final SubmitterScheduler scheduler;
   private final URL requestURL;
   private final File savePath;
   
-  public HttpStreamRecorder(SimpleSchedulerInterface scheduler, 
+  public HttpStreamRecorder(SubmitterScheduler scheduler, 
                             URL requestURL, File savePath, ChannelSchedule schedule) {
     this.chanSchedule = schedule;
     this.scheduler = scheduler;
@@ -57,6 +58,7 @@ public class HttpStreamRecorder implements Runnable {
   
   protected HttpRequest makeRequest() {
     final HttpRequest request = HttpRequest.get(requestURL);
+    request.userAgent(USER_AGENT);
     request.readTimeout(READ_TIMEOUT);
     request.connectTimeout(CONNECT_TIMEOUT);
     scheduler.schedule(new Runnable() {

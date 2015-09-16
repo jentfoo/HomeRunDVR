@@ -11,18 +11,46 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
+import org.threadly.concurrent.TaskPriority;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
 import org.threadly.util.Clock;
-import org.threadly.util.ExceptionHandlerInterface;
+import org.threadly.util.ExceptionHandler;
 import org.threadly.util.ExceptionUtils;
 import org.threadly.util.StringUtils;
 
 public class HomeRunDVR {
-  private static final PriorityScheduler scheduler = new PriorityScheduler(16);
+  private static final ScheduledThreadPoolExecutor verifyScheduler = new ScheduledThreadPoolExecutor(16);
+  private static final PriorityScheduler scheduler = new PriorityScheduler(16) {
+    @Override
+    protected OneTimeTaskWrapper doSchedule(final Runnable task, 
+                                            long delayInMillis, 
+                                            TaskPriority priority) {
+      final AtomicBoolean started = new AtomicBoolean(false);
+      OneTimeTaskWrapper result = super.doSchedule(new Runnable() {
+        @Override
+        public void run() {
+          started.set(true);
+          task.run();
+        }
+      }, delayInMillis, priority);
+      verifyScheduler.schedule(new Runnable() {
+        @Override
+        public void run() {
+          if (! started.get()) {
+            System.err.println("Task not starting!");
+            verifyScheduler.schedule(this, 1000 * 60 * 10, TimeUnit.MILLISECONDS);
+          }
+        }
+      }, delayInMillis + 100, TimeUnit.MILLISECONDS);
+      return result;
+    }
+  };
   private static final Runnable timeLogger = new Runnable() {
     @Override
     public void run() {
@@ -37,7 +65,7 @@ public class HomeRunDVR {
   };
   
   public static void main(String[] args) throws InterruptedException, IOException {
-    ExceptionHandler eh = new ExceptionHandler();
+    DvrExceptionHandler eh = new DvrExceptionHandler();
     Thread.setDefaultUncaughtExceptionHandler(eh);
     ExceptionUtils.setDefaultExceptionHandler(eh);
     
@@ -71,7 +99,8 @@ public class HomeRunDVR {
           } else {
             System.out.print("Starting logging time: ");
             timeLogger.run();
-            scheduler.scheduleAtFixedRate(timeLogger, SchedulingUtils.getDelayTillMinute(0), TimeUnit.HOURS.toMillis(1));
+            scheduler.scheduleAtFixedRate(timeLogger, SchedulingUtils.getDelayTillMinute(0), 
+                                          TimeUnit.HOURS.toMillis(1));
           }
           continue;
         }
@@ -266,7 +295,7 @@ public class HomeRunDVR {
     System.exit(1);
   }
   
-  private static class ExceptionHandler implements ExceptionHandlerInterface, UncaughtExceptionHandler {
+  private static class DvrExceptionHandler implements ExceptionHandler, UncaughtExceptionHandler {
     @Override
     public void uncaughtException(Thread t, Throwable e) {
       System.err.println("Thread: " + t + "...threw exception: ");

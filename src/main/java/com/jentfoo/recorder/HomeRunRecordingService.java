@@ -9,18 +9,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.threadly.concurrent.SchedulerServiceInterface;
+import org.threadly.concurrent.SchedulerService;
 import org.threadly.util.AbstractService;
 import org.threadly.util.StringUtils;
 
 public class HomeRunRecordingService extends AbstractService {
-  public final SchedulerServiceInterface recordScheduler;
+  public final SchedulerService recordScheduler;
   public final File savePath;
   private final InetAddress downloadIp;
   private final List<HttpStreamRecorder> recorders; 
   
-  public HomeRunRecordingService(SchedulerServiceInterface masterScheduler, 
-                                 SchedulerServiceInterface recordScheduler, 
+  public HomeRunRecordingService(SchedulerService masterScheduler, 
+                                 SchedulerService recordScheduler, 
                                  InetAddress downloadIp, File savePath, 
                                  List<ChannelSchedule> schedule) {
     this.recordScheduler = recordScheduler;
