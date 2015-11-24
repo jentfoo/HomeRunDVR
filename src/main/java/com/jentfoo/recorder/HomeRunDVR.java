@@ -17,7 +17,7 @@ import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
 import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
 import org.threadly.util.Clock;
-import org.threadly.util.ExceptionHandlerInterface;
+import org.threadly.util.ExceptionHandler;
 import org.threadly.util.ExceptionUtils;
 import org.threadly.util.StringUtils;
 
@@ -37,7 +37,7 @@ public class HomeRunDVR {
   };
   
   public static void main(String[] args) throws InterruptedException, IOException {
-    ExceptionHandler eh = new ExceptionHandler();
+    DvrExceptionHandler eh = new DvrExceptionHandler();
     Thread.setDefaultUncaughtExceptionHandler(eh);
     ExceptionUtils.setDefaultExceptionHandler(eh);
     
@@ -266,19 +266,17 @@ public class HomeRunDVR {
     System.exit(1);
   }
   
-  private static class ExceptionHandler implements ExceptionHandlerInterface, UncaughtExceptionHandler {
+  private static class DvrExceptionHandler implements ExceptionHandler, UncaughtExceptionHandler {
     @Override
     public void uncaughtException(Thread t, Throwable e) {
       System.err.println("Thread: " + t + "...threw exception: ");
       e.printStackTrace();
-      System.exit(2);
     }
 
     @Override
     public void handleException(Throwable thrown) {
       System.err.println("Uncaught exception: ");
       thrown.printStackTrace();
-      System.exit(2);
     }
   }
 }

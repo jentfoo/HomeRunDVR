@@ -10,7 +10,7 @@ import java.net.SocketException;
 import java.net.URL;
 import java.util.Calendar;
 
-import org.threadly.concurrent.SimpleSchedulerInterface;
+import org.threadly.concurrent.SubmitterScheduler;
 import org.threadly.util.StringUtils;
 
 import com.github.kevinsawicki.http.HttpRequest;
@@ -21,11 +21,11 @@ public class HttpStreamRecorder implements Runnable {
   private static final int BUFFER_SIZE = 4096;
 
   public final ChannelSchedule chanSchedule;
-  private final SimpleSchedulerInterface scheduler;
+  private final SubmitterScheduler scheduler;
   private final URL requestURL;
   private final File savePath;
   
-  public HttpStreamRecorder(SimpleSchedulerInterface scheduler, 
+  public HttpStreamRecorder(SubmitterScheduler scheduler, 
                             URL requestURL, File savePath, ChannelSchedule schedule) {
     this.chanSchedule = schedule;
     this.scheduler = scheduler;
