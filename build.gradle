@@ -13,7 +13,7 @@ repositories {
 dependencies {
   testCompile group: 'junit', name: 'junit', version: '4.+'
   compile (
-    'org.threadly:threadly:4.4.0',
+    'org.threadly:threadly:5.0.0-SNAPSHOT',
     'com.github.kevinsawicki:http-request:6.0'
   )
 }
