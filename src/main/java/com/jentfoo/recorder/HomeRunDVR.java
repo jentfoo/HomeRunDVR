@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.threadly.concurrent.PriorityScheduler;
 import org.threadly.concurrent.SchedulingUtils;
-import org.threadly.concurrent.limiter.SchedulerServiceLimiter;
+import org.threadly.concurrent.wrapper.limiter.SchedulerServiceLimiter;
 import org.threadly.util.Clock;
 import org.threadly.util.ExceptionHandler;
 import org.threadly.util.ExceptionUtils;
